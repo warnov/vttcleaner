@@ -1,5 +1,5 @@
 def main():
-    vtt_path = input("Enter the path to the VTT file: ")
+    vtt_path = input("Enter the path to the VTT file: ").strip().strip('"').strip("'")
     try:
         with open(vtt_path, 'r', encoding='utf-8') as file:
             VTT_content = file.read()
