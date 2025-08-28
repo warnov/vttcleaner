@@ -7,7 +7,8 @@ def main():
     print("Select the type of file to process:")
     print("1. Pure VTT")
     print("2. Text copied from Word (Teams transcript)")
-    option = input("Enter 1 or 2: ").strip()
+    print("3. Zoom VTT transcript")
+    option = input("Enter 1, 2, or 3: ").strip()
 
     if option == "1":
         vtt_path = input("Enter the path to the VTT file: ").strip().strip('"').strip("'")
@@ -148,6 +149,74 @@ def main():
 
             # Save result
             base, ext = os.path.splitext(txt_path)
+            out_path = f"{base}_cleaned.txt"
+            with open(out_path, 'w', encoding='utf-8') as out_file:
+                for interaction in interactions:
+                    out_file.write(interaction + '\n')
+            print(f"Processed interactions saved to {out_path}")
+
+        except Exception as e:
+            print(f"Error reading file: {e}")
+
+    elif option == "3":
+        vtt_path = input("Enter the path to the Zoom VTT file: ").strip().strip('"').strip("'")
+        try:
+            with open(vtt_path, 'r', encoding='utf-8') as file:
+                VTT_content = file.read()
+            print("Zoom VTT file loaded successfully.")
+
+            # Split into lines
+            lines = VTT_content.splitlines()
+            
+            interactions = []
+            current_speaker = None
+            current_text = []
+
+            # Zoom VTT format: number, timestamp, speaker: text
+            i = 0
+            while i < len(lines):
+                line = lines[i].strip()
+                
+                # Skip empty lines, WEBVTT header, numbers, and timestamp lines
+                if not line or line == 'WEBVTT' or line.isdigit() or '-->' in line:
+                    i += 1
+                    continue
+                
+                # Check if line contains speaker and text (speaker: text format)
+                if ':' in line:
+                    parts = line.split(':', 1)
+                    if len(parts) == 2:
+                        speaker_raw = parts[0].strip()
+                        text = parts[1].strip()
+                        
+                        # Simplify speaker name
+                        speaker_parts = speaker_raw.split()
+                        if len(speaker_parts) >= 2:
+                            first = speaker_parts[0]
+                            second = speaker_parts[1][0]
+                            speaker = f"{first}{second}:"
+                        else:
+                            speaker = f"{speaker_parts[0]}:"
+                        
+                        speaker = html.unescape(speaker)
+                        text = html.unescape(text)
+                        
+                        if speaker == current_speaker:
+                            current_text.append(text)
+                        else:
+                            if current_speaker:
+                                interactions.append(f"{current_speaker} {' '.join(current_text)}")
+                            current_speaker = speaker
+                            current_text = [text]
+                
+                i += 1
+            
+            # Add final interaction
+            if current_speaker:
+                interactions.append(f"{current_speaker} {' '.join(current_text)}")
+
+            # Save interactions to a file
+            base, ext = os.path.splitext(vtt_path)
             out_path = f"{base}_cleaned.txt"
             with open(out_path, 'w', encoding='utf-8') as out_file:
                 for interaction in interactions:
