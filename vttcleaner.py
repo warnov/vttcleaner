@@ -1,17 +1,55 @@
+import re
+import html
+import os
+import argparse
+
+
 def main():
+    parser = argparse.ArgumentParser(description='Clean VTT/transcript files')
+    parser.add_argument('file', nargs='?', help='Path to the input file')
+    parser.add_argument('--type', '-t', choices=['1', '2', '3'],
+                        help='File type: 1=Pure VTT, 2=Word/Teams transcript, 3=Zoom VTT')
+    args = parser.parse_args()
 
-    import re
-    import html
-    import os
+    # Determine file path first (needed for extension-based auto-detection)
+    if args.file:
+        file_path = args.file.strip('"').strip("'")
+    else:
+        file_path = None
 
-    print("Select the type of file to process:")
-    print("1. Pure VTT")
-    print("2. Text copied from Word (Teams transcript)")
-    print("3. Zoom VTT transcript")
-    option = input("Enter 1, 2, or 3: ").strip()
+    # Determine option (file type)
+    if args.type:
+        option = args.type
+    elif file_path:
+        ext = os.path.splitext(file_path)[1].lower()
+        if ext == '.vtt':
+            option = '1'
+        elif ext == '.txt':
+            option = '2'
+        else:
+            print("Select the type of file to process:")
+            print("1. Pure VTT")
+            print("2. Text copied from Word (Teams transcript)")
+            print("3. Zoom VTT transcript")
+            option = input("Enter 1, 2, or 3: ").strip()
+    else:
+        print("Select the type of file to process:")
+        print("1. Pure VTT")
+        print("2. Text copied from Word (Teams transcript)")
+        print("3. Zoom VTT transcript")
+        option = input("Enter 1, 2, or 3: ").strip()
+
+    # If no file was passed as argument, ask interactively
+    if not file_path:
+        path_prompts = {
+            "1": "Enter the path to the VTT file: ",
+            "2": "Enter the path to the .txt file copied from Word: ",
+            "3": "Enter the path to the Zoom VTT file: ",
+        }
+        file_path = input(path_prompts.get(option, "Enter the path to the file: ")).strip().strip('"').strip("'")
 
     if option == "1":
-        vtt_path = input("Enter the path to the VTT file: ").strip().strip('"').strip("'")
+        vtt_path = file_path
         try:
             with open(vtt_path, 'r', encoding='utf-8') as file:
                 VTT_content = file.read()
@@ -104,7 +142,7 @@ def main():
             print(f"Error reading file: {e}")
 
     elif option == "2":
-        txt_path = input("Enter the path to the .txt file copied from Word: ").strip().strip('"').strip("'")
+        txt_path = file_path
         try:
             with open(txt_path, 'r', encoding='utf-8') as file:
                 txt_content = file.read()
@@ -159,7 +197,7 @@ def main():
             print(f"Error reading file: {e}")
 
     elif option == "3":
-        vtt_path = input("Enter the path to the Zoom VTT file: ").strip().strip('"').strip("'")
+        vtt_path = file_path
         try:
             with open(vtt_path, 'r', encoding='utf-8') as file:
                 VTT_content = file.read()
