@@ -23,7 +23,7 @@ Microsoft Teams VTT transcripts and Zoom VTT transcripts contain a lot of metada
 
 1. Run the script:
    ```
-   python main.py
+   python vttcleaner.py
    ```
 2. Choose the input format when prompted:
    - Enter `1` for a VTT file (Microsoft Teams format)
@@ -119,6 +119,30 @@ CharlieB: Looking forward to hearing them.
 ## Installation
 
 No installation required. Just ensure you have Python 3.x.
+
+## Windows Context Menu
+
+This repository includes registry files to add/remove a right-click action in File Explorer.
+
+### Install context menu
+
+1. Double-click `vttclean_context_menu.reg`
+2. Confirm the registry prompt.
+3. Right-click files in Explorer:
+    - `.vtt` shows **Clean VTT**
+    - `.txt` shows **Clean Transcript**
+
+### Uninstall context menu
+
+1. Double-click `vttclean_context_menu_uninstall.reg`
+2. Confirm the registry prompt.
+
+### Notes
+
+- The current registry command points to:
+   - `C:\Users\wnovoa\AppData\Local\Programs\Python\Python312\pythonw.exe`
+   - `D:\src\vttcleaner\vttcleaner.py`
+- If you clone this repo to another path or use a different Python install, edit `vttclean_context_menu.reg` before importing it.
 
 ## License
 

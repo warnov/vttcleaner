@@ -1,7 +1,13 @@
 Windows Registry Editor Version 5.00
 
-[HKEY_CLASSES_ROOT\.vtt\shell\vttclean]
-@="VTT Clean"
+[HKEY_CURRENT_USER\Software\Classes\.vtt\shell\vttclean]
+@="Clean VTT"
 
-[HKEY_CLASSES_ROOT\.vtt\shell\vttclean\command]
-@="\"d:\\src\\python\\vttcleaner\\.venv\\Scripts\\pythonw.exe\" \"d:\\src\\python\\vttcleaner\\vttcleaner.py\" \"%1\""
+[HKEY_CURRENT_USER\Software\Classes\.vtt\shell\vttclean\command]
+@="\"C:\\Users\\wnovoa\\AppData\\Local\\Programs\\Python\\Python312\\pythonw.exe\" \"D:\\src\\vttcleaner\\vttcleaner.py\" \"%1\""
+
+[HKEY_CURRENT_USER\Software\Classes\.txt\shell\vttclean]
+@="Clean Transcript"
+
+[HKEY_CURRENT_USER\Software\Classes\.txt\shell\vttclean\command]
+@="\"C:\\Users\\wnovoa\\AppData\\Local\\Programs\\Python\\Python312\\pythonw.exe\" \"D:\\src\\vttcleaner\\vttcleaner.py\" \"%1\""
