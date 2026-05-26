@@ -9,6 +9,7 @@ VTTCleaner is a Python console application designed to process VTT files from Mi
 - Removes unnecessary metadata and timestamps from VTT files.
 - Supports processing of plain text transcripts copied from Word (Teams transcript format).
 - Supports processing of Zoom VTT transcript files.
+- Supports processing of non-conversational closed-caption VTT files (without speaker tags).
 - Simplifies speaker names to "FirstName + Initial".
 - Groups consecutive lines from the same speaker.
 - Outputs a clean, compact transcript.
@@ -105,6 +106,29 @@ Charlie Brown: Looking forward to hearing them.
 Alice Johnson: Great, let's get started.
 ```
 
+### Original Closed-Caption VTT (non-conversational)
+
+```
+WEBVTT
+
+dd58214a-697b-48ca-a3e5-de773d6318db-0
+00:00:08.080 --> 00:00:08.240
+OK.
+
+b7d55c44-3230-40d5-b4a6-9af749db368d-0
+00:00:09.040 --> 00:00:09.760
+Thanks, Katie.
+
+6fe2a765-0a70-4195-9fde-b32d02214600-0
+00:00:09.840 --> 00:00:11.000
+Happy Friday, everyone.
+
+325ef10b-3e5d-426c-9179-3686ff2d077b-0
+00:00:11.360 --> 00:00:15.799
+I'm hoping that I can give you a
+framework and some tools to understand,
+```
+
 ### Cleaned Output (for all input formats)
 
 ```
@@ -113,6 +137,12 @@ Let's review the project status first.
 Great, let's get started.
 BobS: Thanks Alice, I have some updates.
 CharlieB: Looking forward to hearing them.
+```
+
+### Cleaned Output (closed-caption VTT)
+
+```
+OK. Thanks, Katie. Happy Friday, everyone. I'm hoping that I can give you a framework and some tools to understand,
 ```
 
 
@@ -151,4 +181,4 @@ MIT
 ---
 
 
-**Note:** This tool is specifically tailored for VTT files from Microsoft Teams and Zoom, as well as Teams transcripts copied from Word. For other formats, results may vary.
+**Note:** This tool is tailored for Microsoft Teams VTT, Zoom VTT, Teams transcripts copied from Word, and generic closed-caption VTT (without `<v Speaker>` tags). For other formats, results may vary.

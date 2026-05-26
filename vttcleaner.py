@@ -4,6 +4,47 @@ import os
 import argparse
 
 
+def parse_caption_vtt(lines):
+    """Parse generic VTT captions into a continuous text without metadata."""
+    timestamp_re = re.compile(
+        r'^\d{2}:\d{2}:\d{2}\.\d{3}\s+-->\s+\d{2}:\d{2}:\d{2}\.\d{3}'
+    )
+    text_chunks = []
+    i = 0
+
+    while i < len(lines):
+        line = lines[i].strip()
+
+        # Skip WEBVTT header and empty lines.
+        if not line or line == 'WEBVTT':
+            i += 1
+            continue
+
+        # Cues may start with an identifier line (GUID, number, or other token).
+        if i + 1 < len(lines) and timestamp_re.match(lines[i + 1].strip()):
+            i += 1
+            line = lines[i].strip()
+
+        if timestamp_re.match(line):
+            i += 1
+            cue_lines = []
+            while i < len(lines):
+                cue_line = lines[i].strip()
+                if not cue_line:
+                    break
+                cue_lines.append(html.unescape(cue_line))
+                i += 1
+
+            if cue_lines:
+                # Join wrapped lines inside a cue as a single sentence fragment.
+                text_chunks.append(' '.join(cue_lines))
+        else:
+            i += 1
+
+    cleaned_text = re.sub(r'\s+', ' ', ' '.join(text_chunks)).strip()
+    return cleaned_text
+
+
 def main():
     parser = argparse.ArgumentParser(description='Clean VTT/transcript files')
     parser.add_argument('file', nargs='?', help='Path to the input file')
@@ -59,6 +100,17 @@ def main():
             lines = VTT_content.splitlines()
             if len(lines) > 2:
                 lines = lines[2:]
+
+            # Generic closed-caption VTTs usually do not contain speaker tags.
+            # Process them as plain continuous text without speaker labels.
+            if '<v ' not in VTT_content:
+                cleaned_text = parse_caption_vtt(lines)
+                base, ext = os.path.splitext(vtt_path)
+                out_path = f"{base}_cleaned.txt"
+                with open(out_path, 'w', encoding='utf-8') as out_file:
+                    out_file.write(cleaned_text + '\n')
+                print(f"Processed caption text saved to {out_path}")
+                return
 
             interactions = []
             current_speaker = None
