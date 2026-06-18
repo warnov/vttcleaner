@@ -45,11 +45,76 @@ def parse_caption_vtt(lines):
     return cleaned_text
 
 
+def parse_teams_transcript_copy(lines):
+    """Parse text copied from the Teams transcript panel (browser/client UI).
+
+    Expected block format (repeated per utterance):
+        Speaker Name (OPTCODE)
+        55 minutes 18 seconds55:18
+        Speaker Name (OPTCODE) 55 minutes 18 seconds
+        Actual speech text.
+    """
+    # Matches the verbose+compact time line, e.g. "55 minutes 18 seconds55:18"
+    time_line_re = re.compile(r'^\d+\s+(hour|hours|minute|minutes|second|seconds)')
+    # Matches the redundant accessibility repeat line: ends with a time unit word
+    repeat_line_re = re.compile(r'.+\d+\s+(hour|hours|minute|minutes|second|seconds)\s*$')
+
+    interactions = []
+    current_speaker = None
+    current_text = []
+
+    i = 0
+    while i < len(lines):
+        line = lines[i].strip()
+
+        if not line:
+            i += 1
+            continue
+
+        # A speaker header is a non-empty line whose NEXT non-empty line is a time line.
+        next_idx = i + 1
+        while next_idx < len(lines) and not lines[next_idx].strip():
+            next_idx += 1
+        next_line = lines[next_idx].strip() if next_idx < len(lines) else ''
+
+        if time_line_re.match(next_line):
+            # Flush previous speaker
+            if current_speaker and current_text:
+                interactions.append(f"{current_speaker} {' '.join(current_text)}")
+
+            # Clean speaker name: remove trailing account code like (WARNOV)
+            speaker_raw = re.sub(r'\s*\([A-Z0-9]+\)\s*$', '', line).strip()
+            parts = speaker_raw.split()
+            if len(parts) >= 2:
+                speaker = f"{parts[0]}{parts[1][0]}:"
+            else:
+                speaker = f"{parts[0]}:"
+
+            current_speaker = speaker
+            current_text = []
+
+            i += 1  # move to time line
+            i += 1  # skip time line
+            # Skip the redundant repeat line (speaker name + time text)
+            if i < len(lines) and repeat_line_re.match(lines[i].strip()):
+                i += 1
+        else:
+            if current_speaker and line:
+                current_text.append(line)
+            i += 1
+
+    # Flush last speaker
+    if current_speaker and current_text:
+        interactions.append(f"{current_speaker} {' '.join(current_text)}")
+
+    return interactions
+
+
 def main():
     parser = argparse.ArgumentParser(description='Clean VTT/transcript files')
     parser.add_argument('file', nargs='?', help='Path to the input file')
-    parser.add_argument('--type', '-t', choices=['1', '2', '3'],
-                        help='File type: 1=Pure VTT, 2=Word/Teams transcript, 3=Zoom VTT')
+    parser.add_argument('--type', '-t', choices=['1', '2', '3', '4'],
+                        help='File type: 1=Pure VTT, 2=Word/Teams transcript, 3=Zoom VTT, 4=Teams Transcript Copy')
     args = parser.parse_args()
 
     # Determine file path first (needed for extension-based auto-detection)
@@ -65,20 +130,20 @@ def main():
         ext = os.path.splitext(file_path)[1].lower()
         if ext == '.vtt':
             option = '1'
-        elif ext == '.txt':
-            option = '2'
         else:
             print("Select the type of file to process:")
             print("1. Pure VTT")
             print("2. Text copied from Word (Teams transcript)")
             print("3. Zoom VTT transcript")
-            option = input("Enter 1, 2, or 3: ").strip()
+            print("4. Teams Transcript Copy (copied from Teams UI panel)")
+            option = input("Enter 1, 2, 3, or 4: ").strip()
     else:
         print("Select the type of file to process:")
         print("1. Pure VTT")
         print("2. Text copied from Word (Teams transcript)")
         print("3. Zoom VTT transcript")
-        option = input("Enter 1, 2, or 3: ").strip()
+        print("4. Teams Transcript Copy (copied from Teams UI panel)")
+        option = input("Enter 1, 2, 3, or 4: ").strip()
 
     # If no file was passed as argument, ask interactively
     if not file_path:
@@ -86,6 +151,7 @@ def main():
             "1": "Enter the path to the VTT file: ",
             "2": "Enter the path to the .txt file copied from Word: ",
             "3": "Enter the path to the Zoom VTT file: ",
+            "4": "Enter the path to the .txt file copied from Teams UI: ",
         }
         file_path = input(path_prompts.get(option, "Enter the path to the file: ")).strip().strip('"').strip("'")
 
@@ -307,6 +373,25 @@ def main():
 
             # Save interactions to a file
             base, ext = os.path.splitext(vtt_path)
+            out_path = f"{base}_cleaned.txt"
+            with open(out_path, 'w', encoding='utf-8') as out_file:
+                for interaction in interactions:
+                    out_file.write(interaction + '\n')
+            print(f"Processed interactions saved to {out_path}")
+
+        except Exception as e:
+            print(f"Error reading file: {e}")
+    elif option == "4":
+        txt_path = file_path
+        try:
+            with open(txt_path, 'r', encoding='utf-8') as file:
+                txt_content = file.read()
+            print("Teams Transcript Copy file loaded successfully.")
+
+            lines = txt_content.splitlines()
+            interactions = parse_teams_transcript_copy(lines)
+
+            base, ext = os.path.splitext(txt_path)
             out_path = f"{base}_cleaned.txt"
             with open(out_path, 'w', encoding='utf-8') as out_file:
                 for interaction in interactions:
