@@ -1,7 +1,7 @@
 
 # VTTCleaner
 
-VTTCleaner is a Python console application designed to process VTT files from Microsoft Teams, plain text transcripts copied from Word (Teams transcript format), and Zoom VTT transcripts. It extracts and simplifies speaker interactions, making transcripts much more compact and suitable for use with Large Language Models (LLMs) by drastically reducing the required number of tokens.
+VTTCleaner is a Python console application designed to process VTT files from Microsoft Teams, plain text transcripts copied from Word (Teams transcript format), Zoom VTT transcripts, and WhatsApp chat exports. It extracts and simplifies speaker interactions, making transcripts much more compact and suitable for use with Large Language Models (LLMs) by drastically reducing the required number of tokens.
 
 
 ## Features
@@ -10,6 +10,7 @@ VTTCleaner is a Python console application designed to process VTT files from Mi
 - Supports processing of plain text transcripts copied from Word (Teams transcript format).
 - Supports processing of Zoom VTT transcript files.
 - Supports processing of non-conversational closed-caption VTT files (without speaker tags).
+- Supports processing of WhatsApp chat exports (date/time/speaker lines and system messages).
 - Simplifies speaker names to "FirstName + Initial".
 - Groups consecutive lines from the same speaker.
 - Outputs a clean, compact transcript.
@@ -30,6 +31,7 @@ Microsoft Teams VTT transcripts and Zoom VTT transcripts contain a lot of metada
    - Enter `1` for a VTT file (Microsoft Teams format)
    - Enter `2` for a plain text file copied from Word (Teams transcript)
    - Enter `3` for a Zoom VTT transcript file
+   - Enter `5` for a WhatsApp chat export (.txt)
 3. Enter the path to your file when prompted.
 
 
@@ -129,6 +131,16 @@ I'm hoping that I can give you a
 framework and some tools to understand,
 ```
 
+### Original WhatsApp Chat Export (.txt)
+
+```
+2/20/23, 15:50 - Messages and calls are end-to-end encrypted. Only people in this chat can read, listen to, or share them. *Learn more*
+3/9/23, 16:38 - Alice Johnson: Hello team, welcome to our weekly sync.
+3/9/23, 16:39 - Alice Johnson: Let's review the project status first.
+3/9/23, 16:40 - Bob Smith: Thanks Alice, I have some updates.
+3/9/23, 16:45 - Alice Johnson: Great, let's get started.
+```
+
 ### Cleaned Output (for all input formats)
 
 ```
@@ -144,7 +156,6 @@ CharlieB: Looking forward to hearing them.
 ```
 OK. Thanks, Katie. Happy Friday, everyone. I'm hoping that I can give you a framework and some tools to understand,
 ```
-
 
 ## Installation
 
@@ -169,9 +180,10 @@ This repository includes registry files to add/remove a right-click action in Fi
 
 ### Notes
 
+- For `.txt` files, the **Clean Transcript (auto)** entry auto-detects whether the file is a WhatsApp export, a Teams Transcript Copy, or a Word/Teams transcript, based on its content. Explicit entries (**Teams Transcript Copy**, **Clean WhatsApp Chat**) are also available to force a specific format.
 - The current registry command points to:
-   - `C:\Users\wnovoa\AppData\Local\Programs\Python\Python312\pythonw.exe`
-   - `D:\src\vttcleaner\vttcleaner.py`
+   - `C:\Python314\pythonw.exe`
+   - `D:\src\python\vttcleaner\vttcleaner.py`
 - If you clone this repo to another path or use a different Python install, edit `vttclean_context_menu.reg` before importing it.
 
 ## License
@@ -181,4 +193,4 @@ MIT
 ---
 
 
-**Note:** This tool is tailored for Microsoft Teams VTT, Zoom VTT, Teams transcripts copied from Word, and generic closed-caption VTT (without `<v Speaker>` tags). For other formats, results may vary.
+**Note:** This tool is tailored for Microsoft Teams VTT, Zoom VTT, Teams transcripts copied from Word, generic closed-caption VTT (without `<v Speaker>` tags), and WhatsApp chat exports. For other formats, results may vary.

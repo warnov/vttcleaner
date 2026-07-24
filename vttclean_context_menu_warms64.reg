@@ -4,22 +4,22 @@ Windows Registry Editor Version 5.00
 @="Clean VTT"
 
 [HKEY_CURRENT_USER\Software\Classes\.vtt\shell\vttclean\command]
-@="\"C:\\Python314\\pythonw.exe\" \"D:\\src\\python\\vttcleaner\\vttcleaner.py\" \"%1\""
+@="\"C:\\Users\\wnovoa\\AppData\\Local\\Programs\\Python\\Python312\\pythonw.exe\" \"D:\\src\\vttcleaner\\vttcleaner.py\" \"%1\""
 
 [HKEY_CURRENT_USER\Software\Classes\SystemFileAssociations\.txt\shell\vttclean]
 @="Clean Transcript (auto)"
 
 [HKEY_CURRENT_USER\Software\Classes\SystemFileAssociations\.txt\shell\vttclean\command]
-@="\"C:\\Python314\\pythonw.exe\" \"D:\\src\\python\\vttcleaner\\vttcleaner.py\" \"%1\""
+@="\"C:\\Users\\wnovoa\\AppData\\Local\\Programs\\Python\\Python312\\pythonw.exe\" \"D:\\src\\vttcleaner\\vttcleaner.py\" \"%1\""
 
 [HKEY_CURRENT_USER\Software\Classes\SystemFileAssociations\.txt\shell\vttclean_teams]
 @="Teams Transcript Copy"
 
 [HKEY_CURRENT_USER\Software\Classes\SystemFileAssociations\.txt\shell\vttclean_teams\command]
-@="\"C:\\Python314\\pythonw.exe\" \"D:\\src\\python\\vttcleaner\\vttcleaner.py\" --type 4 \"%1\""
+@="\"C:\\Users\\wnovoa\\AppData\\Local\\Programs\\Python\\Python312\\pythonw.exe\" \"D:\\src\\vttcleaner\\vttcleaner.py\" --type 4 \"%1\""
 
 [HKEY_CURRENT_USER\Software\Classes\SystemFileAssociations\.txt\shell\vttclean_whatsapp]
 @="Clean WhatsApp Chat"
 
 [HKEY_CURRENT_USER\Software\Classes\SystemFileAssociations\.txt\shell\vttclean_whatsapp\command]
-@="\"C:\\Python314\\pythonw.exe\" \"D:\\src\\python\\vttcleaner\\vttcleaner.py\" --type 5 \"%1\""
+@="\"C:\\Users\\wnovoa\\AppData\\Local\\Programs\\Python\\Python312\\pythonw.exe\" \"D:\\src\\vttcleaner\\vttcleaner.py\" --type 5 \"%1\""

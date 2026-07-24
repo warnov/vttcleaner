@@ -56,12 +56,26 @@ def parse_teams_transcript_copy(lines):
     """
     # Matches the verbose+compact time line, e.g. "55 minutes 18 seconds55:18"
     time_line_re = re.compile(r'^\d+\s+(hour|hours|minute|minutes|second|seconds)')
-    # Matches the redundant accessibility repeat line: ends with a time unit word
-    repeat_line_re = re.compile(r'.+\d+\s+(hour|hours|minute|minutes|second|seconds)\s*$')
+    time_unit = r'(?:hour|hours|minute|minutes|second|seconds)'
+    # Matches redundant accessibility repeat lines, e.g.
+    # "Speaker Name (OPTCODE) 55 minutes 18 seconds".
+    repeat_line_re = re.compile(
+        rf'^(.+?)\s+\d+\s+{time_unit}(?:\s+\d+\s+{time_unit})*\s*$'
+    )
 
     interactions = []
     current_speaker = None
+    current_speaker_raw = None
     current_text = []
+
+    def clean_speaker_name(speaker_name):
+        return re.sub(r'\s*\([A-Z0-9]+\)\s*$', '', speaker_name).strip()
+
+    def is_redundant_repeat_line(text):
+        if not current_speaker_raw:
+            return False
+        match = repeat_line_re.match(text)
+        return bool(match and clean_speaker_name(match.group(1)) == current_speaker_raw)
 
     i = 0
     while i < len(lines):
@@ -83,7 +97,7 @@ def parse_teams_transcript_copy(lines):
                 interactions.append(f"{current_speaker} {' '.join(current_text)}")
 
             # Clean speaker name: remove trailing account code like (WARNOV)
-            speaker_raw = re.sub(r'\s*\([A-Z0-9]+\)\s*$', '', line).strip()
+            speaker_raw = clean_speaker_name(line)
             parts = speaker_raw.split()
             if len(parts) >= 2:
                 speaker = f"{parts[0]}{parts[1][0]}:"
@@ -91,14 +105,18 @@ def parse_teams_transcript_copy(lines):
                 speaker = f"{parts[0]}:"
 
             current_speaker = speaker
+            current_speaker_raw = speaker_raw
             current_text = []
 
             i += 1  # move to time line
             i += 1  # skip time line
             # Skip the redundant repeat line (speaker name + time text)
-            if i < len(lines) and repeat_line_re.match(lines[i].strip()):
+            if i < len(lines) and is_redundant_repeat_line(lines[i].strip()):
                 i += 1
         else:
+            if is_redundant_repeat_line(line):
+                i += 1
+                continue
             if current_speaker and line:
                 current_text.append(line)
             i += 1
@@ -110,11 +128,113 @@ def parse_teams_transcript_copy(lines):
     return interactions
 
 
+def parse_whatsapp_chat(lines):
+    """Parse a WhatsApp exported chat into simplified speaker interactions.
+
+    Expected line format (one per message):
+        M/D/YY, HH:MM - Speaker Name: message text
+
+    Notes:
+    - Date/time may use 1 or 2 digit components, optional seconds and AM/PM.
+    - System messages (e.g. encryption notice) have no "Speaker:" part and
+      are skipped.
+    - Messages can span multiple physical lines; continuation lines do not
+      start with a date prefix and are appended to the current message.
+    """
+    # Matches the date/time prefix and captures the remaining content.
+    message_re = re.compile(
+        r'^\d{1,2}/\d{1,2}/\d{2,4},\s+\d{1,2}:\d{2}(?::\d{2})?'
+        r'(?:\s*[APap][Mm])?\s+-\s+(.*)$'
+    )
+    # Within the content, separate "Speaker Name: text".
+    speaker_re = re.compile(r'^([^:]+):\s(.*)$')
+
+    interactions = []
+    current_speaker = None
+    current_text = []
+
+    def flush():
+        if current_speaker and current_text:
+            interactions.append(f"{current_speaker} {' '.join(current_text)}")
+
+    for raw_line in lines:
+        line = raw_line.rstrip('\n')
+        match = message_re.match(line.strip())
+
+        if match:
+            content = match.group(1).strip()
+            speaker_match = speaker_re.match(content)
+
+            if not speaker_match:
+                # System/status message without a speaker; skip it.
+                continue
+
+            speaker_raw = speaker_match.group(1).strip()
+            text = speaker_match.group(2).strip()
+
+            # Simplify name: first word + first letter of the second word.
+            parts = speaker_raw.split()
+            if len(parts) >= 2:
+                speaker = f"{parts[0]}{parts[1][0]}:"
+            else:
+                speaker = f"{parts[0]}:"
+
+            if speaker == current_speaker:
+                if text:
+                    current_text.append(text)
+            else:
+                flush()
+                current_speaker = speaker
+                current_text = [text] if text else []
+        else:
+            # Continuation of the previous multi-line message.
+            stripped = line.strip()
+            if current_speaker and stripped:
+                current_text.append(stripped)
+
+    flush()
+    return interactions
+
+
+def detect_txt_type(file_path):
+    """Inspect a .txt file content and guess the transcript format.
+
+    Returns the option string used by main():
+        '5' = WhatsApp chat export
+        '4' = Teams Transcript Copy (copied from Teams UI panel)
+        '2' = Text copied from Word (Teams transcript)
+    Returns None if the format cannot be confidently detected.
+    """
+    whatsapp_re = re.compile(r'^\d{1,2}/\d{1,2}/\d{2,4},\s+\d{1,2}:\d{2}')
+    teams_copy_re = re.compile(r'^\d+\s+(hour|hours|minute|minutes|second|seconds)')
+    word_re = re.compile(r'^.+\s{2,}\d{1,2}:\d{2}$')
+
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            lines = [ln.strip() for ln in f.read().splitlines() if ln.strip()]
+    except Exception:
+        return None
+
+    sample = lines[:50]
+
+    whatsapp_hits = sum(1 for ln in sample if whatsapp_re.match(ln))
+    teams_copy_hits = sum(1 for ln in sample if teams_copy_re.match(ln))
+    word_hits = sum(1 for ln in sample if word_re.match(ln))
+
+    if whatsapp_hits and whatsapp_hits >= teams_copy_hits and whatsapp_hits >= word_hits:
+        return '5'
+    if teams_copy_hits and teams_copy_hits >= word_hits:
+        return '4'
+    if word_hits:
+        return '2'
+    return None
+
+
 def main():
     parser = argparse.ArgumentParser(description='Clean VTT/transcript files')
     parser.add_argument('file', nargs='?', help='Path to the input file')
-    parser.add_argument('--type', '-t', choices=['1', '2', '3', '4'],
-                        help='File type: 1=Pure VTT, 2=Word/Teams transcript, 3=Zoom VTT, 4=Teams Transcript Copy')
+    parser.add_argument('--type', '-t', choices=['1', '2', '3', '4', '5'],
+                        help='File type: 1=Pure VTT, 2=Word/Teams transcript, 3=Zoom VTT, 4=Teams Transcript Copy, 5=WhatsApp chat export')
     args = parser.parse_args()
 
     # Determine file path first (needed for extension-based auto-detection)
@@ -131,19 +251,33 @@ def main():
         if ext == '.vtt':
             option = '1'
         else:
-            print("Select the type of file to process:")
-            print("1. Pure VTT")
-            print("2. Text copied from Word (Teams transcript)")
-            print("3. Zoom VTT transcript")
-            print("4. Teams Transcript Copy (copied from Teams UI panel)")
-            option = input("Enter 1, 2, 3, or 4: ").strip()
+            # Try to auto-detect the transcript format from the content.
+            detected = detect_txt_type(file_path)
+            if detected:
+                names = {
+                    '2': 'Word/Teams transcript',
+                    '4': 'Teams Transcript Copy',
+                    '5': 'WhatsApp chat export',
+                }
+                print(f"Auto-detected format: {names.get(detected, detected)}")
+                option = detected
+            else:
+                print("Could not auto-detect the format.")
+                print("Select the type of file to process:")
+                print("1. Pure VTT")
+                print("2. Text copied from Word (Teams transcript)")
+                print("3. Zoom VTT transcript")
+                print("4. Teams Transcript Copy (copied from Teams UI panel)")
+                print("5. WhatsApp chat export")
+                option = input("Enter 1, 2, 3, 4, or 5: ").strip()
     else:
         print("Select the type of file to process:")
         print("1. Pure VTT")
         print("2. Text copied from Word (Teams transcript)")
         print("3. Zoom VTT transcript")
         print("4. Teams Transcript Copy (copied from Teams UI panel)")
-        option = input("Enter 1, 2, 3, or 4: ").strip()
+        print("5. WhatsApp chat export")
+        option = input("Enter 1, 2, 3, 4, or 5: ").strip()
 
     # If no file was passed as argument, ask interactively
     if not file_path:
@@ -152,6 +286,7 @@ def main():
             "2": "Enter the path to the .txt file copied from Word: ",
             "3": "Enter the path to the Zoom VTT file: ",
             "4": "Enter the path to the .txt file copied from Teams UI: ",
+            "5": "Enter the path to the WhatsApp chat export (.txt): ",
         }
         file_path = input(path_prompts.get(option, "Enter the path to the file: ")).strip().strip('"').strip("'")
 
@@ -390,6 +525,25 @@ def main():
 
             lines = txt_content.splitlines()
             interactions = parse_teams_transcript_copy(lines)
+
+            base, ext = os.path.splitext(txt_path)
+            out_path = f"{base}_cleaned.txt"
+            with open(out_path, 'w', encoding='utf-8') as out_file:
+                for interaction in interactions:
+                    out_file.write(interaction + '\n')
+            print(f"Processed interactions saved to {out_path}")
+
+        except Exception as e:
+            print(f"Error reading file: {e}")
+    elif option == "5":
+        txt_path = file_path
+        try:
+            with open(txt_path, 'r', encoding='utf-8') as file:
+                txt_content = file.read()
+            print("WhatsApp chat export loaded successfully.")
+
+            lines = txt_content.splitlines()
+            interactions = parse_whatsapp_chat(lines)
 
             base, ext = os.path.splitext(txt_path)
             out_path = f"{base}_cleaned.txt"
